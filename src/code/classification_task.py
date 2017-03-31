@@ -161,10 +161,13 @@ def managed_train(max_epoch):
     response = urllib.request.urlopen(url)
     data = pd.read_csv(response, header=None)
 
-    input_data, unique_dict = preprocess_for_onehot(data)
-    producer = tf.train.input_producer(input_data)
-    input_batch = tf.train.batch(producer, 32)
     with tf.Graph().as_default():
+        input_data, unique_dict = preprocess_for_onehot(data)
+        producer = tf.train.input_producer(input_data).dequeue()
+        producer = tf.cast(producer, tf.float32)
+
+        input_batch = tf.train.batch([producer], 32)
+
         input = tf.placeholder(tf.float32, shape=[None, input_data.shape[1]])
         initializer = tf.truncated_normal_initializer()
         with tf.variable_scope('Model', initializer=initializer):
@@ -175,7 +178,7 @@ def managed_train(max_epoch):
         with sv.managed_session() as sess:
 
             for i in range(max_epoch):
-                loss, _, summary = sess.run([auto.loss, auto.train_op],
+                loss, _ = sess.run([auto.loss, auto.train_op],
                                     feed_dict={input:input_data})
                 print('Epoch {} loss: {}'.format(i, loss))
 
@@ -216,6 +219,6 @@ def embed(max_epoch):
     writer.close()
 
 if __name__ == '__main__':
-    train_classifier(1000)
+    # train_classifier(1000)
     # train(200)
-    # managed_train(20000)
+    managed_train(20000)
